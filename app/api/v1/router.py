@@ -19,7 +19,8 @@ async def health_check() -> dict[str, str]:
 
 from app.auth.router import router as auth_router  # noqa: E402
 api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
-
+from app.workspaces.router import router as workspaces_router  # noqa: E402
+api_router.include_router(workspaces_router, prefix="/workspaces", tags=["workspaces"])
 # Future includes, added as each module is built:
 #
 # from app.workspaces.router import router as workspaces_router
