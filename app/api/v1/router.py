@@ -21,13 +21,12 @@ from app.auth.router import router as auth_router  # noqa: E402
 api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
 from app.workspaces.router import router as workspaces_router  # noqa: E402
 api_router.include_router(workspaces_router, prefix="/workspaces", tags=["workspaces"])
+from app.documents.router import router as documents_router  # noqa: E402
+api_router.include_router(
+    documents_router, prefix="/workspaces/{workspace_id}/documents", tags=["documents"]
+)
+
 # Future includes, added as each module is built:
-#
-# from app.workspaces.router import router as workspaces_router
-# api_router.include_router(workspaces_router, prefix="/workspaces", tags=["workspaces"])
-#
-# from app.documents.router import router as documents_router
-# api_router.include_router(documents_router, prefix="/documents", tags=["documents"])
 #
 # from app.chat.router import router as chat_router
 # api_router.include_router(chat_router, prefix="/chat", tags=["chat"])
