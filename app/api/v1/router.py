@@ -26,6 +26,19 @@ api_router.include_router(
     documents_router, prefix="/workspaces/{workspace_id}/documents", tags=["documents"]
 )
 
+
+from app.chat.router import router as chat_router  # noqa: E402
+api_router.include_router(chat_router, prefix="/workspaces/{workspace_id}/chat", tags=["chat"])
+
+
+from app.apikeys.router import router as apikeys_router  # noqa: E402
+api_router.include_router(apikeys_router, prefix="/workspaces/{workspace_id}/api-keys", tags=["api-keys"])
+
+
+from app.admin.router import router as admin_router  # noqa: E402
+api_router.include_router(admin_router, prefix="/workspaces/{workspace_id}/admin", tags=["admin"])
+
+
 # Future includes, added as each module is built:
 #
 # from app.chat.router import router as chat_router
