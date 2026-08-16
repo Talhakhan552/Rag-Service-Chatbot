@@ -8,6 +8,12 @@ import { workspaces as workspacesApi } from "@/lib/api";
 import type { Workspace } from "@/lib/types";
 import { TopNav } from "@/components/TopNav";
 
+const ROLE_STYLES: Record<string, string> = {
+  owner: "bg-warm-soft text-warm",
+  admin: "bg-accent-soft text-accent-text",
+  member: "bg-surface-hover text-text-secondary",
+};
+
 export default function WorkspacesPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -44,51 +50,52 @@ export default function WorkspacesPage() {
   if (authLoading || !user) return null;
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
+    <div className="flex min-h-full flex-1 flex-col bg-canvas">
       <TopNav />
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-slate-900">Workspaces</h1>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
+        <div className="mb-8">
+          <h1 className="font-display text-2xl font-semibold text-text-primary">Workspaces</h1>
+          <p className="mt-1 text-sm text-text-secondary">Each workspace keeps its own documents, chats, and team.</p>
         </div>
 
-        <form onSubmit={handleCreate} className="mb-8 flex gap-2">
+        <form onSubmit={handleCreate} className="mb-10 flex gap-2">
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="New workspace name"
-            className="w-64 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-72 rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
           />
           <button
             type="submit"
             disabled={creating}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition hover:bg-accent-hover disabled:opacity-50"
           >
             Create
           </button>
         </form>
 
         {loading ? (
-          <p className="text-sm text-slate-500">Loading...</p>
+          <p className="text-sm text-text-muted">Loading...</p>
         ) : list.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-300 py-16 text-center">
-            <p className="text-sm text-slate-500">No workspaces yet. Create one above to get started.</p>
+          <div className="rounded-xl border border-dashed border-border py-20 text-center">
+            <p className="text-sm text-text-muted">No workspaces yet. Create one above to get started.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {list.map((ws) => (
               <Link
                 key={ws.id}
                 href={`/workspaces/${ws.id}`}
-                className="rounded-lg border border-slate-200 bg-white p-4 hover:border-indigo-300 hover:shadow-sm"
+                className="group rounded-xl border border-border bg-surface p-5 transition hover:border-border-strong hover:bg-surface-hover"
               >
-                <div className="mb-1 flex items-center justify-between">
-                  <h2 className="font-medium text-slate-900">{ws.name}</h2>
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                <div className="mb-3 flex items-start justify-between">
+                  <h2 className="font-display font-medium text-text-primary group-hover:text-white">{ws.name}</h2>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ROLE_STYLES[ws.my_role]}`}>
                     {ws.my_role}
                   </span>
                 </div>
-                <p className="font-mono text-xs text-slate-400">{ws.slug}</p>
+                <p className="font-mono text-xs text-text-muted">{ws.slug}</p>
               </Link>
             ))}
           </div>

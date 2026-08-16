@@ -17,7 +17,7 @@ export function AdminTab({ workspaceId }: { workspaceId: string }) {
     adminApi.stats(workspaceId).then(setStats);
   }, [workspaceId]);
 
-  if (!stats) return <p className="text-sm text-slate-500">Loading...</p>;
+  if (!stats) return <p className="text-sm text-text-muted">Loading...</p>;
 
   const cards = [
     { label: "Documents", value: stats.document_count },
@@ -33,20 +33,23 @@ export function AdminTab({ workspaceId }: { workspaceId: string }) {
     <div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {cards.map((c) => (
-          <div key={c.label} className="rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-xs font-medium uppercase text-slate-500">{c.label}</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-900">{c.value}</p>
+          <div key={c.label} className="rounded-xl border border-border bg-surface p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-text-muted">{c.label}</p>
+            <p className="mt-1.5 font-display text-2xl font-semibold text-text-primary">{c.value}</p>
           </div>
         ))}
       </div>
 
       {Object.keys(stats.documents_by_status).length > 0 && (
-        <div className="mt-6">
-          <h3 className="mb-2 text-sm font-medium text-slate-700">Documents by status</h3>
-          <div className="flex gap-2">
+        <div className="mt-8">
+          <h3 className="mb-3 text-sm font-medium text-text-secondary">Documents by status</h3>
+          <div className="flex flex-wrap gap-2">
             {Object.entries(stats.documents_by_status).map(([status, count]) => (
-              <span key={status} className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
-                {status}: {count}
+              <span
+                key={status}
+                className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-text-secondary"
+              >
+                {status}: <span className="font-medium text-text-primary">{count}</span>
               </span>
             ))}
           </div>

@@ -5,10 +5,17 @@ import { documents as documentsApi, ApiError } from "@/lib/api";
 import type { Document } from "@/lib/types";
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-slate-100 text-slate-600",
-  processing: "bg-amber-100 text-amber-700",
-  completed: "bg-emerald-100 text-emerald-700",
-  failed: "bg-red-100 text-red-700",
+  pending: "bg-surface-hover text-text-secondary",
+  processing: "bg-warm-soft text-warm",
+  completed: "bg-success-soft text-success",
+  failed: "bg-danger-soft text-danger",
+};
+
+const FILE_ICON: Record<string, string> = {
+  pdf: "▤",
+  docx: "▥",
+  txt: "▦",
+  md: "▧",
 };
 
 function formatBytes(bytes: number): string {
@@ -29,8 +36,6 @@ export function DocumentsTab({ workspaceId }: { workspaceId: string }) {
   useEffect(() => {
     load().finally(() => setLoading(false));
 
-    // Poll while any document is still pending/processing, so status
-    // moves to completed/failed without a manual refresh.
     const interval = setInterval(() => {
       setDocs((current) => {
         if (current.some((d) => d.status === "pending" || d.status === "processing")) {
@@ -78,50 +83,55 @@ export function DocumentsTab({ workspaceId }: { workspaceId: string }) {
           />
           <label
             htmlFor="doc-upload"
-            className="cursor-pointer rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition hover:bg-accent-hover"
           >
             {uploading ? "Uploading..." : "Upload document"}
           </label>
-          <span className="ml-3 text-xs text-slate-400">PDF, DOCX, TXT, or MD</span>
+          <span className="ml-3 text-xs text-text-muted">PDF, DOCX, TXT, or MD</span>
         </div>
       </div>
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="mb-4 rounded-lg border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>
+      )}
 
       {loading ? (
-        <p className="text-sm text-slate-500">Loading...</p>
+        <p className="text-sm text-text-muted">Loading...</p>
       ) : docs.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-300 py-16 text-center">
-          <p className="text-sm text-slate-500">No documents yet. Upload one to make it searchable in chat.</p>
+        <div className="rounded-xl border border-dashed border-border py-20 text-center">
+          <p className="text-sm text-text-muted">No documents yet. Upload one to make it searchable in chat.</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-slate-200">
+        <div className="overflow-hidden rounded-xl border border-border">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
+            <thead className="border-b border-border bg-surface-raised text-left text-xs font-medium uppercase tracking-wide text-text-muted">
               <tr>
-                <th className="px-4 py-2">Filename</th>
-                <th className="px-4 py-2">Size</th>
-                <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2"></th>
+                <th className="px-4 py-3">Filename</th>
+                <th className="px-4 py-3">Size</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {docs.map((doc) => (
-                <tr key={doc.id}>
-                  <td className="px-4 py-2.5 font-medium text-slate-900">{doc.filename}</td>
-                  <td className="px-4 py-2.5 text-slate-500">{formatBytes(doc.file_size_bytes)}</td>
-                  <td className="px-4 py-2.5">
+                <tr key={doc.id} className="bg-surface transition hover:bg-surface-hover">
+                  <td className="px-4 py-3 font-medium text-text-primary">
+                    <span className="mr-2 text-text-muted">{FILE_ICON[doc.file_type] || "▤"}</span>
+                    {doc.filename}
+                  </td>
+                  <td className="px-4 py-3 text-text-secondary">{formatBytes(doc.file_size_bytes)}</td>
+                  <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[doc.status]}`}>
                       {doc.status}
                     </span>
                     {doc.status === "failed" && doc.error_message && (
-                      <p className="mt-1 text-xs text-red-500">{doc.error_message}</p>
+                      <p className="mt-1 text-xs text-danger">{doc.error_message}</p>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-right">
+                  <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => handleDelete(doc.id)}
-                      className="text-xs text-slate-400 hover:text-red-600"
+                      className="text-xs text-text-muted transition hover:text-danger"
                     >
                       Delete
                     </button>

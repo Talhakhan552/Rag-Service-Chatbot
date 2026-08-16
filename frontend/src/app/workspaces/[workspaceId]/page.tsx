@@ -43,40 +43,43 @@ export default function WorkspaceDetailPage({ params }: { params: Promise<{ work
   ];
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
+    <div className="flex min-h-full flex-1 flex-col bg-canvas">
       <TopNav />
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-lg font-semibold text-slate-900">{workspace.name}</h1>
-          <p className="font-mono text-xs text-slate-400">{workspace.slug}</p>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
+        <div className="mb-8">
+          <h1 className="font-display text-2xl font-semibold text-text-primary">{workspace.name}</h1>
+          <p className="font-mono text-xs text-text-muted">{workspace.slug}</p>
         </div>
 
-        <div className="mb-6 border-b border-slate-200">
-          <nav className="flex gap-6">
+        <div className="mb-8 border-b border-border">
+          <nav className="flex gap-1">
             {tabs
               .filter((t) => !t.adminOnly || isAdmin)
               .map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setTab(t.id)}
-                  className={`border-b-2 pb-2 text-sm font-medium ${
-                    tab === t.id
-                      ? "border-indigo-600 text-indigo-600"
-                      : "border-transparent text-slate-500 hover:text-slate-700"
+                  className={`relative px-3.5 py-2.5 text-sm font-medium transition ${
+                    tab === t.id ? "text-text-primary" : "text-text-muted hover:text-text-secondary"
                   }`}
                 >
                   {t.label}
+                  {tab === t.id && (
+                    <span className="absolute inset-x-3.5 -bottom-px h-0.5 rounded-full bg-accent" />
+                  )}
                 </button>
               ))}
           </nav>
         </div>
 
-        {tab === "chat" && <ChatTab workspaceId={workspaceId} />}
-        {tab === "documents" && <DocumentsTab workspaceId={workspaceId} />}
-        {tab === "members" && <MembersTab workspaceId={workspaceId} />}
-        {tab === "api-keys" && isAdmin && <ApiKeysTab workspaceId={workspaceId} />}
-        {tab === "admin" && isAdmin && <AdminTab workspaceId={workspaceId} />}
+        <div className="animate-fade-up">
+          {tab === "chat" && <ChatTab workspaceId={workspaceId} />}
+          {tab === "documents" && <DocumentsTab workspaceId={workspaceId} />}
+          {tab === "members" && <MembersTab workspaceId={workspaceId} />}
+          {tab === "api-keys" && isAdmin && <ApiKeysTab workspaceId={workspaceId} />}
+          {tab === "admin" && isAdmin && <AdminTab workspaceId={workspaceId} />}
+        </div>
       </main>
     </div>
   );

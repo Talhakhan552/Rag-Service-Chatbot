@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import { workspaces as workspacesApi, ApiError } from "@/lib/api";
 import type { Member, WorkspaceRole } from "@/lib/types";
 
+const ROLE_STYLES: Record<string, string> = {
+  owner: "bg-warm-soft text-warm",
+  admin: "bg-accent-soft text-accent-text",
+  member: "bg-surface-hover text-text-secondary",
+};
+
 export function MembersTab({ workspaceId }: { workspaceId: string }) {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,12 +48,12 @@ export function MembersTab({ workspaceId }: { workspaceId: string }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Member's email (must already have an account)"
-          className="w-72 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="w-72 rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
         />
         <select
           value={role}
           onChange={(e) => setRole(e.target.value as WorkspaceRole)}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
         >
           <option value="member">Member</option>
           <option value="admin">Admin</option>
@@ -55,33 +61,35 @@ export function MembersTab({ workspaceId }: { workspaceId: string }) {
         <button
           type="submit"
           disabled={inviting}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition hover:bg-accent-hover disabled:opacity-50"
         >
           Add
         </button>
       </form>
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="mb-4 rounded-lg border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>
+      )}
 
       {loading ? (
-        <p className="text-sm text-slate-500">Loading...</p>
+        <p className="text-sm text-text-muted">Loading...</p>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-slate-200">
+        <div className="overflow-hidden rounded-xl border border-border">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
+            <thead className="border-b border-border bg-surface-raised text-left text-xs font-medium uppercase tracking-wide text-text-muted">
               <tr>
-                <th className="px-4 py-2">Email</th>
-                <th className="px-4 py-2">Name</th>
-                <th className="px-4 py-2">Role</th>
+                <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3">Name</th>
+                <th className="px-4 py-3">Role</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {members.map((m) => (
-                <tr key={m.user_id}>
-                  <td className="px-4 py-2.5 font-medium text-slate-900">{m.email}</td>
-                  <td className="px-4 py-2.5 text-slate-500">{m.full_name || "—"}</td>
-                  <td className="px-4 py-2.5">
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                <tr key={m.user_id} className="bg-surface transition hover:bg-surface-hover">
+                  <td className="px-4 py-3 font-medium text-text-primary">{m.email}</td>
+                  <td className="px-4 py-3 text-text-secondary">{m.full_name || "—"}</td>
+                  <td className="px-4 py-3">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ROLE_STYLES[m.role]}`}>
                       {m.role}
                     </span>
                   </td>
