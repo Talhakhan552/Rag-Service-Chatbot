@@ -8,3 +8,4 @@ venv/
 storage/uploads/*
 !storage/uploads/.gitkeep
 .DS_Store
+.dockerignore
