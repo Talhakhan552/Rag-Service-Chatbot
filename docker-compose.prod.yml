@@ -1,0 +1,83 @@
+# Production stack. Differences from docker-compose.yml (dev):
+# - No source bind mounts -- the image is the deployed artifact, not
+#   a live view of your working directory. Changes require a rebuild.
+# - Adds the frontend as its own service.
+# - restart: always everywhere, since there's no developer watching
+#   the terminal to notice a crash and restart it manually.
+# - App runs multiple uvicorn workers for real concurrency.
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up --build -d
+
+services:
+  app:
+    build: .
+    container_name: rag_saas_app
+    env_file: .env.production
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+    volumes:
+      - uploads_data:/app/storage/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    container_name: rag_saas_frontend
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: always
+
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: rag_saas_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: rag_saas_redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  # Terminates TLS and routes both services under one domain --
+  # app.example.com/ -> frontend, app.example.com/api/ -> backend.
+  # See DEPLOYMENT.md for the matching nginx config and TLS setup.
+  nginx:
+    image: nginx:alpine
+    container_name: rag_saas_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - app
+      - frontend
+    restart: always
+
+volumes:
+  postgres_data:
+  uploads_data:
