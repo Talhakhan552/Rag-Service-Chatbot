@@ -1,8 +1,9 @@
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.rate_limit import limiter
 from app.database.session import get_db
 from app.documents.schemas import DocumentOut
 from app.documents.service import (
@@ -23,7 +24,9 @@ router = APIRouter()
 
 
 @router.post("", response_model=DocumentOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 async def upload(
+    request: Request,
     workspace_id: uuid.UUID,
     file: UploadFile,
     background_tasks: BackgroundTasks,

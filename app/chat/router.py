@@ -1,7 +1,7 @@
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,7 @@ from app.chat.service import (
     save_message,
 )
 from app.core.logging import get_logger
+from app.core.rate_limit import limiter
 from app.database.session import AsyncSessionLocal, get_db
 from app.models.message import MessageRole
 from app.models.workspace import WorkspaceRole
@@ -88,7 +89,9 @@ def _sse(event: dict) -> str:
 
 
 @router.post("/sessions/{session_id}/messages")
+@limiter.limit("20/minute")
 async def send_message(
+    request: Request,
     workspace_id: uuid.UUID,
     session_id: uuid.UUID,
     data: SendMessageRequest,

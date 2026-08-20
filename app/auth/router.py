@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
@@ -13,6 +13,7 @@ from app.auth.service import (
     revoke_refresh_token,
     rotate_refresh_token,
 )
+from app.core.rate_limit import limiter
 from app.database.session import get_db
 from app.models.user import User
 
@@ -20,7 +21,8 @@ router = APIRouter()
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-async def register(data: UserRegister, db: AsyncSession = Depends(get_db)) -> User:
+@limiter.limit("5/minute")
+async def register(request: Request, data: UserRegister, db: AsyncSession = Depends(get_db)) -> User:
     try:
         return await register_user(db, data.email, data.password, data.full_name)
     except EmailAlreadyRegisteredError:
@@ -28,7 +30,8 @@ async def register(data: UserRegister, db: AsyncSession = Depends(get_db)) -> Us
 
 
 @router.post("/login", response_model=TokenPair)
-async def login(data: UserLogin, db: AsyncSession = Depends(get_db)) -> TokenPair:
+@limiter.limit("5/minute")
+async def login(request: Request, data: UserLogin, db: AsyncSession = Depends(get_db)) -> TokenPair:
     try:
         user = await authenticate_user(db, data.email, data.password)
     except InvalidCredentialsError:
