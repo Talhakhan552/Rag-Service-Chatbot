@@ -32,16 +32,43 @@ class WorkspaceAccess:
     user_id: uuid.UUID | None  # None when authenticated via API key
 
 
+def _origin_allowed(allowed_origins: str | None, origin: str | None) -> bool:
+    """
+    An API key with no allowed_origins is unrestricted (backward
+    compatible). Otherwise the request's Origin header must match one of
+    the listed origins. Comparison is case-insensitive and ignores a
+    trailing slash. A restricted key with a missing Origin is rejected --
+    a real browser always sends Origin on the widget's cross-origin POSTs,
+    so its absence means the request isn't coming from an allowed page.
+    """
+    if not allowed_origins:
+        return True
+
+    def norm(value: str) -> str:
+        return value.strip().rstrip("/").lower()
+
+    allowed = {norm(o) for o in allowed_origins.split(",") if o.strip()}
+    if not allowed:
+        return True
+    return origin is not None and norm(origin) in allowed
+
+
 async def get_workspace_access(
     workspace_id: uuid.UUID,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
     authorization: str | None = Header(default=None),
+    origin: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> WorkspaceAccess:
     if x_api_key is not None:
         api_key = await validate_api_key(db, x_api_key)
         if api_key is None or api_key.workspace_id != workspace_id:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+        if not _origin_allowed(api_key.allowed_origins, origin):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This API key is not authorized for this domain",
+            )
         await db.commit()
         return WorkspaceAccess(workspace_id=workspace_id, role=WorkspaceRole.MEMBER, user_id=None)
 

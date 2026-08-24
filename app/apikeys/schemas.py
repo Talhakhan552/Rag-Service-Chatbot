@@ -6,6 +6,9 @@ from pydantic import BaseModel, ConfigDict
 
 class ApiKeyCreate(BaseModel):
     name: str
+    # Comma-separated origins the key may be used from, e.g.
+    # "https://acme.com,https://www.acme.com". Empty = unrestricted.
+    allowed_origins: str | None = None
 
 
 class ApiKeyCreated(BaseModel):
@@ -21,6 +24,7 @@ class ApiKeyCreated(BaseModel):
     name: str
     key: str
     key_prefix: str
+    allowed_origins: str | None
     created_at: datetime
 
 
@@ -30,6 +34,7 @@ class ApiKeyOut(BaseModel):
     id: uuid.UUID
     name: str
     key_prefix: str
+    allowed_origins: str | None
     is_active: bool
     last_used_at: datetime | None
     created_at: datetime
