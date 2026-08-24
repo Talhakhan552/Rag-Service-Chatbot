@@ -8,6 +8,7 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
+  const [allowedOrigins, setAllowedOrigins] = useState("");
   const [creating, setCreating] = useState(false);
   const [justCreatedKey, setJustCreatedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -43,9 +44,10 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
     if (!name.trim()) return;
     setCreating(true);
     try {
-      const created = await apiKeysApi.create(workspaceId, name.trim());
+      const created = await apiKeysApi.create(workspaceId, name.trim(), allowedOrigins.trim() || undefined);
       setJustCreatedKey(created.key);
       setName("");
+      setAllowedOrigins("");
       await load();
     } finally {
       setCreating(false);
@@ -66,20 +68,32 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
 
   return (
     <div>
-      <form onSubmit={handleCreate} className="mb-4 flex gap-2">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Key name, e.g. 'Production integration'"
-          className="w-72 rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-        />
-        <button
-          type="submit"
-          disabled={creating}
-          className="rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition hover:bg-accent-hover disabled:opacity-50"
-        >
-          Create key
-        </button>
+      <form onSubmit={handleCreate} className="mb-6 space-y-3">
+        <div className="flex flex-wrap gap-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Key name, e.g. 'Website widget'"
+            className="w-72 rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+          <input
+            value={allowedOrigins}
+            onChange={(e) => setAllowedOrigins(e.target.value)}
+            placeholder="Allowed domains, e.g. https://your-site.com"
+            className="min-w-72 flex-1 rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+          <button
+            type="submit"
+            disabled={creating}
+            className="rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition hover:bg-accent-hover disabled:opacity-50"
+          >
+            Create key
+          </button>
+        </div>
+        <p className="text-xs text-text-muted">
+          For a widget key, list the site(s) it will run on (comma-separated) so a copied key can&apos;t be used
+          elsewhere. Leave blank only for server-side keys that stay secret.
+        </p>
       </form>
 
       {justCreatedKey && (
@@ -135,6 +149,7 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
               <tr>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Key</th>
+                <th className="px-4 py-3">Domains</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Last used</th>
                 <th className="px-4 py-3"></th>
@@ -145,6 +160,13 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
                 <tr key={k.id} className="bg-surface transition hover:bg-surface-hover">
                   <td className="px-4 py-3 font-medium text-text-primary">{k.name}</td>
                   <td className="px-4 py-3 font-mono text-xs text-text-secondary">{k.key_prefix}...</td>
+                  <td className="px-4 py-3 text-xs text-text-secondary">
+                    {k.allowed_origins ? (
+                      <span className="break-all">{k.allowed_origins}</span>
+                    ) : (
+                      <span className="text-warm">Any (unrestricted)</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${

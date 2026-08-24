@@ -26,6 +26,20 @@ def _hash_key(raw_key: str) -> str:
     return hashlib.sha256(raw_key.encode()).hexdigest()
 
 
+def _clean_origins(raw: str | None) -> str | None:
+    """
+    Normalize a comma-separated origin list for storage: trim each entry,
+    drop a trailing slash, drop empties. Returns None if nothing is left,
+    which means "unrestricted". Case is preserved as typed; the Origin
+    check lowercases both sides at comparison time.
+    """
+    if not raw:
+        return None
+    parts = [o.strip().rstrip("/") for o in raw.split(",")]
+    parts = [o for o in parts if o]
+    return ",".join(parts) if parts else None
+
+
 def _generate_raw_key() -> tuple[str, str]:
     """Returns (raw_key, display_prefix). display_prefix is safe to store and show in lists."""
     secret_part = secrets.token_urlsafe(32)
@@ -35,7 +49,7 @@ def _generate_raw_key() -> tuple[str, str]:
 
 
 async def create_api_key(
-    db: AsyncSession, workspace_id: uuid.UUID, created_by: uuid.UUID, name: str
+    db: AsyncSession, workspace_id: uuid.UUID, created_by: uuid.UUID, name: str, allowed_origins: str | None = None
 ) -> tuple[ApiKey, str]:
     raw_key, display_prefix = _generate_raw_key()
 
@@ -45,6 +59,7 @@ async def create_api_key(
         name=name,
         key_prefix=display_prefix,
         key_hash=_hash_key(raw_key),
+        allowed_origins=_clean_origins(allowed_origins),
     )
     db.add(api_key)
     await db.flush()
