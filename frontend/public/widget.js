@@ -70,8 +70,13 @@
       '<button id="cortex-widget-send" type="submit">Send</button>' +
       "</form>";
   
-    document.body.appendChild(bubble);
-    document.body.appendChild(panel);
+    function mount() {
+      document.body.appendChild(bubble);
+      document.body.appendChild(panel);
+    }
+    // The snippet may be pasted in <head>, where document.body doesn't exist yet.
+    if (document.body) mount();
+    else document.addEventListener("DOMContentLoaded", mount);
   
     var messagesEl = panel.querySelector("#cortex-widget-messages");
     var formEl = panel.querySelector("#cortex-widget-form");
