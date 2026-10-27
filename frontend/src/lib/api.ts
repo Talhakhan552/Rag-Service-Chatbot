@@ -221,8 +221,8 @@ export const chat = {
 // --- API Keys ---
 export const apiKeys = {
   list: (workspaceId: string) => apiJson<ApiKey[]>(`/workspaces/${workspaceId}/api-keys`),
-  create: (workspaceId: string, name: string) =>
-    apiJson<ApiKeyCreated>(`/workspaces/${workspaceId}/api-keys`, jsonBody({ name })),
+  create: (workspaceId: string, name: string, allowedDomains: string[]) =>
+    apiJson<ApiKeyCreated>(`/workspaces/${workspaceId}/api-keys`, jsonBody({ name, allowed_domains: allowedDomains })),
   revoke: (workspaceId: string, keyId: string) =>
     apiJson<void>(`/workspaces/${workspaceId}/api-keys/${keyId}`, { method: "DELETE" }),
 };

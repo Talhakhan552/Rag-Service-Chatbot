@@ -26,4 +26,12 @@ def rate_limit_key(request) -> str:
     return get_remote_address(request)
 
 
-limiter = Limiter(key_func=rate_limit_key, default_limits=[f"{settings.rate_limit_per_minute}/minute"])
+# Redis storage so all uvicorn workers share one count (in-memory would
+# give each worker its own bucket and reset on every restart).
+limiter = Limiter(
+    key_func=rate_limit_key,
+    default_limits=[f"{settings.rate_limit_per_minute}/minute"],
+    storage_uri=settings.redis_url,
+    # If Redis is down, count in memory instead of failing every request.
+    in_memory_fallback_enabled=True,
+)

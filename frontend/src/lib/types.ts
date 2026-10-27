@@ -72,6 +72,7 @@ export interface ApiKeyCreated {
   name: string;
   key: string;
   key_prefix: string;
+  allowed_domains: string[];
   created_at: string;
 }
 
@@ -79,6 +80,7 @@ export interface ApiKey {
   id: string;
   name: string;
   key_prefix: string;
+  allowed_domains: string[];
   is_active: boolean;
   last_used_at: string | null;
   created_at: string;

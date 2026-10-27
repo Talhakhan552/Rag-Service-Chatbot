@@ -5,6 +5,8 @@
 # - restart: always everywhere, since there's no developer watching
 #   the terminal to notice a crash and restart it manually.
 # - App runs multiple uvicorn workers for real concurrency.
+# - No Postgres container: the database is hosted (Supabase), set via
+#   DATABASE_URL. Migrations run automatically before the app starts.
 #
 # Usage:
 #   docker compose -f docker-compose.prod.yml --env-file .env.production up --build -d
@@ -14,12 +16,14 @@ services:
     build: .
     container_name: rag_saas_app
     env_file: .env.production
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+    # --forwarded-allow-ips: trust nginx's X-Forwarded-For so rate limits see
+    # real client IPs, not nginx's. Safe because the app port isn't published.
+    command: >
+      sh -c "alembic upgrade head &&
+             exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4 --forwarded-allow-ips '*'"
     volumes:
       - uploads_data:/app/storage/uploads
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
     restart: always
@@ -33,22 +37,6 @@ services:
     depends_on:
       app:
         condition: service_healthy
-    restart: always
-
-  db:
-    image: pgvector/pgvector:pg16
-    container_name: rag_saas_db
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
     restart: always
 
   redis:
@@ -79,5 +67,4 @@ services:
     restart: always
 
 volumes:
-  postgres_data:
   uploads_data:

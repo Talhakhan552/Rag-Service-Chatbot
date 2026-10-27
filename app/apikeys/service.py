@@ -35,7 +35,7 @@ def _generate_raw_key() -> tuple[str, str]:
 
 
 async def create_api_key(
-    db: AsyncSession, workspace_id: uuid.UUID, created_by: uuid.UUID, name: str
+    db: AsyncSession, workspace_id: uuid.UUID, created_by: uuid.UUID, name: str, allowed_domains: list[str]
 ) -> tuple[ApiKey, str]:
     raw_key, display_prefix = _generate_raw_key()
 
@@ -45,6 +45,7 @@ async def create_api_key(
         name=name,
         key_prefix=display_prefix,
         key_hash=_hash_key(raw_key),
+        allowed_domains=allowed_domains,
     )
     db.add(api_key)
     await db.flush()

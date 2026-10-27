@@ -8,6 +8,7 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
+  const [domains, setDomains] = useState("");
   const [creating, setCreating] = useState(false);
   const [justCreatedKey, setJustCreatedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -23,9 +24,11 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
     if (!name.trim()) return;
     setCreating(true);
     try {
-      const created = await apiKeysApi.create(workspaceId, name.trim());
+      const allowedDomains = domains.split(",").map((d) => d.trim()).filter(Boolean);
+      const created = await apiKeysApi.create(workspaceId, name.trim(), allowedDomains);
       setJustCreatedKey(created.key);
       setName("");
+      setDomains("");
       await load();
     } finally {
       setCreating(false);
@@ -46,12 +49,19 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
 
   return (
     <div>
-      <form onSubmit={handleCreate} className="mb-4 flex gap-2">
+      <form onSubmit={handleCreate} className="mb-4 flex flex-wrap gap-2">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Key name, e.g. 'Production integration'"
           className="w-72 rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+        />
+        <input
+          value={domains}
+          onChange={(e) => setDomains(e.target.value)}
+          placeholder="Allowed domains, e.g. example.com, www.example.com"
+          aria-label="Allowed domains, comma-separated. Leave empty for server-to-server keys."
+          className="w-96 rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
         />
         <button
           type="submit"
@@ -95,6 +105,7 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
               <tr>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Key</th>
+                <th className="px-4 py-3">Domains</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Last used</th>
                 <th className="px-4 py-3"></th>
@@ -105,6 +116,9 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
                 <tr key={k.id} className="bg-surface transition hover:bg-surface-hover">
                   <td className="px-4 py-3 font-medium text-text-primary">{k.name}</td>
                   <td className="px-4 py-3 font-mono text-xs text-text-secondary">{k.key_prefix}...</td>
+                  <td className="px-4 py-3 text-xs text-text-secondary">
+                    {k.allowed_domains.length ? k.allowed_domains.join(", ") : "Any (no lock)"}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${

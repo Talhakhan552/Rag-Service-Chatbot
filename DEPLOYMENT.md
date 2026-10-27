@@ -20,7 +20,7 @@ cp .env.production.example .env.production
 Fill in every blank value. In particular:
 - `JWT_SECRET_KEY` — generate a **new** one, never reuse the dev value:
   `openssl rand -hex 32`
-- `POSTGRES_PASSWORD` — a real, unique password
+- `DATABASE_URL` — your Supabase Session pooler URL (see the comment in the file)
 - `OPENAI_API_KEY` — your real key
 - `CORS_ORIGINS` and `NEXT_PUBLIC_API_URL` — your real domain, not `localhost`
 
@@ -56,7 +56,7 @@ docker compose -f docker-compose.prod.yml ps
 Then run migrations (same as dev, just against the prod container):
 
 ```bash
-docker compose -f docker-compose.prod.yml exec app alembic upgrade head
+# Migrations run automatically when the app container starts.
 ```
 
 Visit `https://your-domain.com` — nginx routes `/` to the frontend and
@@ -81,7 +81,6 @@ rebuild:
 ```bash
 git pull
 docker compose -f docker-compose.prod.yml --env-file .env.production up --build -d
-docker compose -f docker-compose.prod.yml exec app alembic upgrade head  # if there are new migrations
 ```
 
 This causes a brief restart of the `app` and `frontend` containers.
@@ -95,4 +94,5 @@ Postgres holds everything that matters (accounts, workspaces, chunks,
 chat history). Back it up regularly:
 
 ```bash
-docker compose -f docker-compose.prod.yml exec db pg_dump -U raguser ragchatbot > backup
+# Use the plain postgresql:// form of DATABASE_URL (no +asyncpg).
+pg_dump "postgresql://USER:PASSWORD@HOST:5432/postgres" > backup
