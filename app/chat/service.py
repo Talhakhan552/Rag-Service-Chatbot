@@ -12,23 +12,56 @@ class ChatSessionNotFoundError(Exception):
     pass
 
 
-async def create_session(db: AsyncSession, workspace_id: uuid.UUID, user_id: uuid.UUID, title: str | None) -> ChatSession:
-    session = ChatSession(workspace_id=workspace_id, user_id=user_id, title=title)
+def _owned_by(user_id: uuid.UUID | None, api_key_id: uuid.UUID | None):
+    """
+    Sessions are private to whoever created them: the user for JWT
+    callers, the key for API-key callers (which have no user). Without
+    this, an API key embedded in a public widget could read every chat
+    in the workspace.
+    """
+    if user_id is not None:
+        return ChatSession.user_id == user_id
+    return ChatSession.api_key_id == api_key_id
+
+
+async def create_session(
+    db: AsyncSession,
+    workspace_id: uuid.UUID,
+    user_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None,
+    title: str | None,
+) -> ChatSession:
+    session = ChatSession(workspace_id=workspace_id, user_id=user_id, api_key_id=api_key_id, title=title)
     db.add(session)
     await db.flush()
     return session
 
 
-async def list_sessions(db: AsyncSession, workspace_id: uuid.UUID) -> list[ChatSession]:
+async def list_sessions(
+    db: AsyncSession, workspace_id: uuid.UUID, user_id: uuid.UUID | None, api_key_id: uuid.UUID | None
+) -> list[ChatSession]:
     result = await db.execute(
-        select(ChatSession).where(ChatSession.workspace_id == workspace_id).order_by(ChatSession.created_at.desc())
+        select(ChatSession)
+        .where(ChatSession.workspace_id == workspace_id, _owned_by(user_id, api_key_id))
+        .order_by(ChatSession.created_at.desc())
     )
     return list(result.scalars().all())
 
 
-async def get_session(db: AsyncSession, workspace_id: uuid.UUID, session_id: uuid.UUID) -> ChatSession:
+async def get_session(
+    db: AsyncSession,
+    workspace_id: uuid.UUID,
+    session_id: uuid.UUID,
+    user_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None,
+) -> ChatSession:
+    # Someone else's session is reported as not found, so its existence isn't leaked.
     session = await db.scalar(
-        select(ChatSession).where(ChatSession.id == session_id, ChatSession.workspace_id == workspace_id)
+        select(ChatSession).where(
+            ChatSession.id == session_id,
+            ChatSession.workspace_id == workspace_id,
+            _owned_by(user_id, api_key_id),
+        )
     )
     if session is None:
         raise ChatSessionNotFoundError()

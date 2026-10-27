@@ -21,11 +21,9 @@ from app.core.logging import get_logger
 from app.core.rate_limit import limiter
 from app.database.session import AsyncSessionLocal, get_db
 from app.models.message import MessageRole
-from app.models.workspace import WorkspaceRole
 from app.rag.prompt import build_chat_messages, sources_payload
 from app.rag.retrieval import retrieve_context
 from app.services.llm_provider import stream_chat_completion
-from app.workspaces.service import role_at_least
 
 logger = get_logger(__name__)
 
@@ -39,7 +37,7 @@ async def create(
     db: AsyncSession = Depends(get_db),
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
-    return await create_session(db, workspace_id, access.user_id, data.title)
+    return await create_session(db, workspace_id, access.user_id, access.api_key_id, data.title)
 
 
 @router.get("/sessions", response_model=list[ChatSessionOut])
@@ -48,7 +46,7 @@ async def list_all(
     db: AsyncSession = Depends(get_db),
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
-    return await list_sessions(db, workspace_id)
+    return await list_sessions(db, workspace_id, access.user_id, access.api_key_id)
 
 
 @router.get("/sessions/{session_id}/messages", response_model=list[MessageOut])
@@ -59,7 +57,7 @@ async def get_history(
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
     try:
-        session = await get_session(db, workspace_id, session_id)
+        session = await get_session(db, workspace_id, session_id, access.user_id, access.api_key_id)
     except ChatSessionNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
 
@@ -74,12 +72,9 @@ async def delete(
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
     try:
-        session = await get_session(db, workspace_id, session_id)
+        session = await get_session(db, workspace_id, session_id, access.user_id, access.api_key_id)
     except ChatSessionNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
-
-    if session.user_id != access.user_id and not role_at_least(access.role, WorkspaceRole.ADMIN):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not permitted to delete this session")
 
     await delete_session(db, session)
 
@@ -99,7 +94,7 @@ async def send_message(
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
     try:
-        session = await get_session(db, workspace_id, session_id)
+        session = await get_session(db, workspace_id, session_id, access.user_id, access.api_key_id)
     except ChatSessionNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
 

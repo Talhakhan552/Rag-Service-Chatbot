@@ -16,9 +16,11 @@ dropped per test) and a transaction rolled back at the end. Slightly
 slower than a shared schema, but simple and correct across
 pytest-asyncio versions -- worth the tradeoff for a suite this size.
 
-Requires a real Postgres with pgvector reachable at TEST_DATABASE_URL
-(or DATABASE_URL as a fallback) -- run via:
-    docker compose exec app pytest
+Requires a real Postgres with pgvector reachable at TEST_DATABASE_URL,
+which must point at a local host (the compose `db` service or
+localhost). There is deliberately no fallback to DATABASE_URL: that
+can be a hosted database, and every test ends with drop_all. Run via:
+    docker compose exec -e TEST_DATABASE_URL=postgresql+asyncpg://USER:PASS@db:5432/rag_test app pytest
 """
 
 import os
@@ -26,16 +28,26 @@ import os
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 import app.models  # noqa: F401 -- registers all models on Base.metadata
-from app.core.config import settings
 from app.core.rate_limit import limiter
 from app.database.base import Base
 from app.database.session import get_db
 from app.main import create_app
 
-TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", settings.database_url)
+LOCAL_DB_HOSTS = {"db", "localhost", "127.0.0.1", "::1"}
+
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
+if not TEST_DATABASE_URL:
+    pytest.exit("TEST_DATABASE_URL is not set -- refusing to run (tests drop all tables).", returncode=2)
+if make_url(TEST_DATABASE_URL).host not in LOCAL_DB_HOSTS:
+    pytest.exit(
+        f"TEST_DATABASE_URL host {make_url(TEST_DATABASE_URL).host!r} is not local -- refusing to run "
+        f"(tests drop all tables). Allowed hosts: {sorted(LOCAL_DB_HOSTS)}",
+        returncode=2,
+    )
 
 
 @pytest.fixture(autouse=True)

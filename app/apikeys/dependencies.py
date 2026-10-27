@@ -13,6 +13,7 @@ the caller's actual membership and role, same as everywhere else.
 
 import uuid
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,20 +31,27 @@ class WorkspaceAccess:
     workspace_id: uuid.UUID
     role: WorkspaceRole
     user_id: uuid.UUID | None  # None when authenticated via API key
+    api_key_id: uuid.UUID | None = None  # set only when authenticated via API key
 
 
 async def get_workspace_access(
     workspace_id: uuid.UUID,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
     authorization: str | None = Header(default=None),
+    origin: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> WorkspaceAccess:
     if x_api_key is not None:
         api_key = await validate_api_key(db, x_api_key)
         if api_key is None or api_key.workspace_id != workspace_id:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+        # Domain lock: stops other websites embedding this key. A missing
+        # Origin is rejected too, though non-browser callers can fake it --
+        # the per-key rate limit is what bounds that case.
+        if api_key.allowed_domains and urlparse(origin or "").hostname not in api_key.allowed_domains:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="API key not allowed from this domain")
         await db.commit()
-        return WorkspaceAccess(workspace_id=workspace_id, role=WorkspaceRole.MEMBER, user_id=None)
+        return WorkspaceAccess(workspace_id=workspace_id, role=WorkspaceRole.MEMBER, user_id=None, api_key_id=api_key.id)
 
     if authorization is None:
         raise HTTPException(
