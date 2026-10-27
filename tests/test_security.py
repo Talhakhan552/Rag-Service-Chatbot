@@ -30,6 +30,9 @@ def test_jwt_rejects_garbage_token():
 def test_jwt_rejects_tampered_token():
     user_id = uuid.uuid4()
     token = create_access_token(user_id)
-    tampered = token[:-1] + ("A" if token[-1] != "A" else "B")
+    # Change the signature's FIRST char: the last base64url char holds padding
+    # bits, so swapping it can decode to the same bytes and leave the token valid.
+    header, payload, sig = token.split(".")
+    tampered = f"{header}.{payload}.{'A' if sig[0] != 'A' else 'B'}{sig[1:]}"
     with pytest.raises(ValueError):
         decode_access_token(tampered)
