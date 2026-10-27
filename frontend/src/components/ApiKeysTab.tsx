@@ -22,6 +22,19 @@ function expiryToIso(choice: string, customDate: string): string | null {
   return d.toISOString();
 }
 
+const DEFAULT_DESIGN = {
+  title: "Chat with us",
+  welcome: "Hi! Ask me anything and I'll answer from what's been uploaded here.",
+  accent: "#8171F2",
+  theme: "light",
+  position: "right",
+};
+
+const escapeAttr = (v: string) => v.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+
+const FIELD =
+  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent";
+
 const isExpired = (k: ApiKey) => k.expires_at !== null && new Date(k.expires_at) <= new Date();
 
 export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
@@ -37,6 +50,8 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
   const [copied, setCopied] = useState(false);
   const [copiedSnippet, setCopiedSnippet] = useState(false);
   const [origin, setOrigin] = useState("");
+  const [design, setDesign] = useState(DEFAULT_DESIGN);
+  const setField = (field: keyof typeof DEFAULT_DESIGN, value: string) => setDesign((d) => ({ ...d, [field]: value }));
 
   const load = () => apiKeysApi.list(workspaceId).then(setKeys);
 
@@ -54,7 +69,15 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://your-backend.onrender.com/api/v1";
 
   const embedSnippet = (key: string) =>
-    `<script\n  src="${origin}/widget.js"\n  data-api-url="${apiUrl}"\n  data-workspace-id="${workspaceId}"\n  data-api-key="${key}"\n></script>`;
+    `<script\n  src="${origin}/widget.js"\n  data-api-url="${apiUrl}"\n  data-workspace-id="${workspaceId}"\n  data-api-key="${key}"` +
+    `\n  data-title="${escapeAttr(design.title)}"\n  data-welcome="${escapeAttr(design.welcome)}"` +
+    `\n  data-accent="${design.accent}"\n  data-theme="${design.theme}"\n  data-position="${design.position}"\n></script>`;
+
+  // The real widget.js inside a frame, opened automatically. The fake key means messages won't send.
+  const previewDoc =
+    `<!doctype html><html><body style="margin:0;height:100vh;background:${design.theme === "dark" ? "#2a2d34" : "#eef0f3"}">` +
+    embedSnippet("preview") +
+    `<script>document.getElementById("cortex-widget-bubble").click()</scr` + `ipt></body></html>`;
 
   const copySnippet = (key: string) => {
     navigator.clipboard.writeText(embedSnippet(key));
@@ -263,7 +286,72 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
 
       <div className="mt-8 rounded-xl border border-border bg-surface p-5">
         <h3 className="text-sm font-semibold text-text-primary">Embed the chat widget</h3>
-        <p className="mt-1 text-sm text-text-secondary">
+
+        <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_400px]">
+          <div className="space-y-3">
+            <label className="block text-xs font-medium text-text-muted">
+              Title
+              <input value={design.title} onChange={(e) => setField("title", e.target.value)} className={`mt-1 ${FIELD}`} />
+            </label>
+            <label className="block text-xs font-medium text-text-muted">
+              Welcome message
+              <textarea
+                value={design.welcome}
+                onChange={(e) => setField("welcome", e.target.value)}
+                rows={2}
+                className={`mt-1 ${FIELD}`}
+              />
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              <label className="block text-xs font-medium text-text-muted">
+                Color
+                <input
+                  type="color"
+                  value={design.accent}
+                  onChange={(e) => setField("accent", e.target.value)}
+                  className="mt-1 h-[38px] w-full cursor-pointer rounded-lg border border-border bg-surface p-1"
+                />
+              </label>
+              <label className="block text-xs font-medium text-text-muted">
+                Theme
+                <select value={design.theme} onChange={(e) => setField("theme", e.target.value)} className={`mt-1 ${FIELD}`}>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </label>
+              <label className="block text-xs font-medium text-text-muted">
+                Position
+                <select
+                  value={design.position}
+                  onChange={(e) => setField("position", e.target.value)}
+                  className={`mt-1 ${FIELD}`}
+                >
+                  <option value="right">Bottom right</option>
+                  <option value="left">Bottom left</option>
+                </select>
+              </label>
+            </div>
+            <button
+              onClick={() => setDesign(DEFAULT_DESIGN)}
+              className="text-xs text-text-muted transition hover:text-text-primary"
+            >
+              Reset to default
+            </button>
+          </div>
+
+          <div>
+            <p className="mb-1 text-xs font-medium text-text-muted">Live preview (messages won&apos;t send here)</p>
+            {origin && (
+              <iframe
+                title="Chat widget preview"
+                srcDoc={previewDoc}
+                className="h-[640px] w-full rounded-lg border border-border"
+              />
+            )}
+          </div>
+        </div>
+
+        <p className="mt-6 text-sm text-text-secondary">
           Add this snippet to any website. Replace{" "}
           <code className="font-mono text-xs text-text-primary">YOUR_API_KEY</code> with a key from above (create a
           new one if you didn&apos;t copy it).

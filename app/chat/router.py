@@ -104,7 +104,10 @@ async def send_message(
     await db.commit()
 
     retrieved_chunks = await retrieve_context(db, workspace_id, data.content)
-    llm_messages = build_chat_messages(retrieved_chunks, history, data.content)
+    # API-key callers are embedded widgets on customer sites: answer without citing sources.
+    llm_messages = build_chat_messages(
+        retrieved_chunks, history, data.content, cite_sources=access.user_id is not None
+    )
     sources = sources_payload(retrieved_chunks)
 
     async def event_stream():
