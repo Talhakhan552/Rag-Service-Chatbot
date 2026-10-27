@@ -3,7 +3,25 @@ export interface User {
   email: string;
   full_name: string | null;
   is_active: boolean;
+  is_superuser: boolean;
   created_at: string;
+}
+
+export interface PlatformUser extends User {
+  workspace_count: number;
+}
+
+export interface PlatformWorkspace {
+  id: string;
+  name: string;
+  slug: string;
+  owner_email: string | null;
+  created_at: string;
+  member_count: number;
+  document_count: number;
+  total_storage_bytes: number;
+  chat_session_count: number;
+  message_count: number;
 }
 
 export interface TokenPair {
@@ -73,6 +91,7 @@ export interface ApiKeyCreated {
   key: string;
   key_prefix: string;
   allowed_domains: string[];
+  expires_at: string | null;
   created_at: string;
 }
 
@@ -81,6 +100,7 @@ export interface ApiKey {
   name: string;
   key_prefix: string;
   allowed_domains: string[];
+  expires_at: string | null;
   is_active: boolean;
   last_used_at: string | null;
   created_at: string;

@@ -4,11 +4,34 @@ import { useEffect, useState } from "react";
 import { apiKeys as apiKeysApi } from "@/lib/api";
 import type { ApiKey } from "@/lib/types";
 
+const EXPIRY_OPTIONS = [
+  { value: "never", label: "Never expires" },
+  { value: "7", label: "Expires in 7 days" },
+  { value: "30", label: "Expires in 30 days" },
+  { value: "90", label: "Expires in 90 days" },
+  { value: "365", label: "Expires in 1 year" },
+  { value: "custom", label: "Custom date..." },
+];
+
+// End of the chosen day in the admin's local time, sent as an ISO timestamp.
+function expiryToIso(choice: string, customDate: string): string | null {
+  if (choice === "never") return null;
+  if (choice === "custom") return customDate ? new Date(`${customDate}T23:59:59`).toISOString() : null;
+  const d = new Date();
+  d.setDate(d.getDate() + Number(choice));
+  return d.toISOString();
+}
+
+const isExpired = (k: ApiKey) => k.expires_at !== null && new Date(k.expires_at) <= new Date();
+
 export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [allowedDomains, setAllowedDomains] = useState("");
+  const [expiry, setExpiry] = useState("never");
+  const [customExpiry, setCustomExpiry] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [justCreatedKey, setJustCreatedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -42,14 +65,23 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    if (expiry === "custom" && !customExpiry) {
+      setError("Pick an expiry date.");
+      return;
+    }
+    setError(null);
     setCreating(true);
     try {
       const domains = allowedDomains.split(",").map((d) => d.trim()).filter(Boolean);
-      const created = await apiKeysApi.create(workspaceId, name.trim(), domains);
+      const created = await apiKeysApi.create(workspaceId, name.trim(), domains, expiryToIso(expiry, customExpiry));
       setJustCreatedKey(created.key);
       setName("");
       setAllowedDomains("");
+      setExpiry("never");
+      setCustomExpiry("");
       await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create key");
     } finally {
       setCreating(false);
     }
@@ -84,6 +116,27 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
             aria-label="Allowed domains, comma-separated"
             className="min-w-72 flex-1 rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
           />
+          <select
+            value={expiry}
+            onChange={(e) => setExpiry(e.target.value)}
+            aria-label="Key expiry"
+            className="rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          >
+            {EXPIRY_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          {expiry === "custom" && (
+            <input
+              type="date"
+              value={customExpiry}
+              onChange={(e) => setCustomExpiry(e.target.value)}
+              aria-label="Custom expiry date"
+              className="rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+          )}
           <button
             type="submit"
             disabled={creating}
@@ -94,8 +147,10 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
         </div>
         <p className="text-xs text-text-muted">
           For a widget key, list the site(s) it will run on (comma-separated) so a copied key can&apos;t be used
-          elsewhere. Leave blank only for server-side keys that stay secret.
+          elsewhere. Leave blank only for server-side keys that stay secret. An expiry date makes a leaked key stop
+          working on its own.
         </p>
+        {error && <p className="text-xs text-danger">{error}</p>}
       </form>
 
       {justCreatedKey && (
@@ -152,6 +207,7 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Key</th>
                 <th className="px-4 py-3">Domains</th>
+                <th className="px-4 py-3">Expires</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Last used</th>
                 <th className="px-4 py-3"></th>
@@ -169,13 +225,20 @@ export function ApiKeysTab({ workspaceId }: { workspaceId: string }) {
                       <span className="text-warm">Any (unrestricted)</span>
                     )}
                   </td>
+                  <td className="px-4 py-3 text-text-secondary">
+                    {k.expires_at ? new Date(k.expires_at).toLocaleDateString() : "Never"}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        k.is_active ? "bg-success-soft text-success" : "bg-surface-hover text-text-muted"
+                        k.is_active && !isExpired(k)
+                          ? "bg-success-soft text-success"
+                          : isExpired(k) && k.is_active
+                            ? "bg-warm-soft text-warm"
+                            : "bg-surface-hover text-text-muted"
                       }`}
                     >
-                      {k.is_active ? "active" : "revoked"}
+                      {!k.is_active ? "revoked" : isExpired(k) ? "expired" : "active"}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-text-secondary">

@@ -19,11 +19,14 @@ async def create(
     db: AsyncSession = Depends(get_db),
     membership: WorkspaceMember = Depends(require_role(WorkspaceRole.ADMIN)),
 ):
-    api_key, raw_key = await create_api_key(db, workspace_id, membership.user_id, data.name, data.allowed_domains)
+    api_key, raw_key = await create_api_key(
+        db, workspace_id, membership.user_id, data.name, data.allowed_domains, data.expires_at
+    )
     return ApiKeyCreated(
         id=api_key.id, name=api_key.name, key=raw_key,
         key_prefix=api_key.key_prefix,
         allowed_domains=api_key.allowed_domains,
+        expires_at=api_key.expires_at,
         created_at=api_key.created_at,
     )
 

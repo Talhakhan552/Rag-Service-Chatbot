@@ -38,3 +38,10 @@ async def test_locked_key_only_works_from_allowed_origin(client):
 async def test_unlocked_key_works_without_origin(client):
     ws, body = await _setup(client, [])
     assert (await _list(client, ws, body["key"])).status_code == 200
+
+
+async def test_new_keys_do_not_use_stripe_prefix(client):
+    # sk_live_ matches Stripe's secret-key pattern and trips GitHub secret scanning.
+    _, body = await _setup(client, [])
+    assert body["key"].startswith("cx_pub_")
+    assert body["key_prefix"].startswith("cx_pub_")

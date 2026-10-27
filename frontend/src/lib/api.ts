@@ -5,6 +5,8 @@ import type {
   Document,
   Member,
   Message,
+  PlatformUser,
+  PlatformWorkspace,
   TokenPair,
   User,
   Workspace,
@@ -221,8 +223,11 @@ export const chat = {
 // --- API Keys ---
 export const apiKeys = {
   list: (workspaceId: string) => apiJson<ApiKey[]>(`/workspaces/${workspaceId}/api-keys`),
-  create: (workspaceId: string, name: string, allowedDomains: string[]) =>
-    apiJson<ApiKeyCreated>(`/workspaces/${workspaceId}/api-keys`, jsonBody({ name, allowed_domains: allowedDomains })),
+  create: (workspaceId: string, name: string, allowedDomains: string[], expiresAt: string | null) =>
+    apiJson<ApiKeyCreated>(
+      `/workspaces/${workspaceId}/api-keys`,
+      jsonBody({ name, allowed_domains: allowedDomains, expires_at: expiresAt }),
+    ),
   revoke: (workspaceId: string, keyId: string) =>
     apiJson<void>(`/workspaces/${workspaceId}/api-keys/${keyId}`, { method: "DELETE" }),
 };
@@ -230,4 +235,10 @@ export const apiKeys = {
 // --- Admin ---
 export const admin = {
   stats: (workspaceId: string) => apiJson<WorkspaceStats>(`/workspaces/${workspaceId}/admin/stats`),
+};
+
+// --- Platform admin (superusers only) ---
+export const platformAdmin = {
+  users: () => apiJson<PlatformUser[]>("/admin/users"),
+  workspaces: () => apiJson<PlatformWorkspace[]>("/admin/workspaces"),
 };

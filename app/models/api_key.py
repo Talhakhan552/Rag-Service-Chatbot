@@ -12,7 +12,7 @@ class ApiKey(Base, UUIDPkMixin, TimestampMixin):
     """
     Customer-facing API key. We never store the raw key -- only its
     hash (same pattern as passwords) plus a short, non-secret prefix
-    (e.g. "rag_live_ab12") so the UI can display "which key is this"
+    (e.g. "cx_pub_ab12cd") so the UI can display "which key is this"
     without ever showing the secret again after creation.
     """
 
@@ -34,6 +34,9 @@ class ApiKey(Base, UUIDPkMixin, TimestampMixin):
     allowed_domains: Mapped[list[str]] = mapped_column(
         ARRAY(String(255)), nullable=False, default=list, server_default="{}"
     )
+
+    # NULL = never expires. Checked on every request in validate_api_key.
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

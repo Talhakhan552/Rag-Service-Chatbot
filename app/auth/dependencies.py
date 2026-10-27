@@ -34,3 +34,13 @@ async def get_current_user(
         raise unauthorized
 
     return user
+
+
+async def require_superuser(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Platform-wide admin (users.is_superuser), separate from per-workspace
+    owner/admin roles. There is no API to grant it -- set it in the DB.
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Platform admin access required")
+    return current_user

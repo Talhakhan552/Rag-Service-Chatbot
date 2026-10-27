@@ -18,6 +18,11 @@ export function TopNav() {
 
         {user && (
           <div className="flex items-center gap-4">
+            {user.is_superuser && (
+              <Link href="/admin" className="text-sm font-medium text-accent-text transition hover:text-text-primary">
+                Platform admin
+              </Link>
+            )}
             <span className="text-sm text-text-secondary">{user.email}</span>
             <button
               onClick={logout}

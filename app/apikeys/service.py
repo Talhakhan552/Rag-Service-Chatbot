@@ -15,7 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.api_key import ApiKey
 
-KEY_PREFIX = "sk_live_"
+# Not "sk_live_": that is Stripe's secret-key format, so GitHub secret
+# scanning flags any page that embeds a widget key. Old sk_live_ keys
+# still validate -- lookup is by hash of the whole key, not the prefix.
+KEY_PREFIX = "cx_pub_"
 
 
 class ApiKeyNotFoundError(Exception):
@@ -35,7 +38,12 @@ def _generate_raw_key() -> tuple[str, str]:
 
 
 async def create_api_key(
-    db: AsyncSession, workspace_id: uuid.UUID, created_by: uuid.UUID, name: str, allowed_domains: list[str]
+    db: AsyncSession,
+    workspace_id: uuid.UUID,
+    created_by: uuid.UUID,
+    name: str,
+    allowed_domains: list[str],
+    expires_at: datetime | None,
 ) -> tuple[ApiKey, str]:
     raw_key, display_prefix = _generate_raw_key()
 
@@ -46,6 +54,7 @@ async def create_api_key(
         key_prefix=display_prefix,
         key_hash=_hash_key(raw_key),
         allowed_domains=allowed_domains,
+        expires_at=expires_at,
     )
     db.add(api_key)
     await db.flush()
@@ -80,8 +89,9 @@ async def validate_api_key(db: AsyncSession, raw_key: str) -> ApiKey | None:
     key_hash = _hash_key(raw_key)
     api_key = await db.scalar(select(ApiKey).where(ApiKey.key_hash == key_hash))
 
-    if api_key is None or not api_key.is_active:
+    now = datetime.now(timezone.utc)
+    if api_key is None or not api_key.is_active or (api_key.expires_at and api_key.expires_at <= now):
         return None
 
-    api_key.last_used_at = datetime.now(timezone.utc)
+    api_key.last_used_at = now
     return api_key

@@ -8,10 +8,10 @@ class FakeRequest:
 
 
 def test_different_api_keys_get_different_buckets():
-    key_a = rate_limit_key(FakeRequest({"X-API-Key": "sk_live_AAAA"}))
-    key_b = rate_limit_key(FakeRequest({"X-API-Key": "sk_live_BBBB"}))
+    key_a = rate_limit_key(FakeRequest({"X-API-Key": "cx_pub_AAAA"}))
+    key_b = rate_limit_key(FakeRequest({"X-API-Key": "cx_pub_BBBB"}))
     assert key_a != key_b
-    assert key_a == "apikey:sk_live_AAAA"
+    assert key_a == "apikey:cx_pub_AAAA"
 
 
 def test_no_api_key_falls_back_to_ip():
@@ -20,6 +20,6 @@ def test_no_api_key_falls_back_to_ip():
 
 
 def test_same_api_key_from_different_ip_shares_a_bucket():
-    key1 = rate_limit_key(FakeRequest({"X-API-Key": "sk_live_AAAA"}, client_host="1.1.1.1"))
-    key2 = rate_limit_key(FakeRequest({"X-API-Key": "sk_live_AAAA"}, client_host="9.9.9.9"))
+    key1 = rate_limit_key(FakeRequest({"X-API-Key": "cx_pub_AAAA"}, client_host="1.1.1.1"))
+    key2 = rate_limit_key(FakeRequest({"X-API-Key": "cx_pub_AAAA"}, client_host="9.9.9.9"))
     assert key1 == key2

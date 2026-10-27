@@ -35,8 +35,9 @@ from app.apikeys.router import router as apikeys_router  # noqa: E402
 api_router.include_router(apikeys_router, prefix="/workspaces/{workspace_id}/api-keys", tags=["api-keys"])
 
 
-from app.admin.router import router as admin_router  # noqa: E402
+from app.admin.router import platform_router, router as admin_router  # noqa: E402
 api_router.include_router(admin_router, prefix="/workspaces/{workspace_id}/admin", tags=["admin"])
+api_router.include_router(platform_router, prefix="/admin", tags=["platform-admin"])
 
 
 # Future includes, added as each module is built:

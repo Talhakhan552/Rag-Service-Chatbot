@@ -11,12 +11,13 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.admin.schemas import WorkspaceStatsOut
+from app.admin.schemas import PlatformUserOut, PlatformWorkspaceOut, WorkspaceStatsOut
 from app.models.api_key import ApiKey
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.message import ChatSession, Message
-from app.models.workspace import WorkspaceMember
+from app.models.user import User
+from app.models.workspace import Workspace, WorkspaceMember
 
 
 async def get_workspace_stats(db: AsyncSession, workspace_id: uuid.UUID) -> WorkspaceStatsOut:
@@ -70,3 +71,73 @@ async def get_workspace_stats(db: AsyncSession, workspace_id: uuid.UUID) -> Work
         member_count=member_count or 0,
         active_api_key_count=active_api_key_count or 0,
     )
+
+
+# --- Platform-wide (superuser) views ---
+# One query each: per-row counts are correlated subqueries, so listing
+# N workspaces doesn't fire N*5 extra queries.
+# shortcut: returns every row, no pagination -- add limit/offset once there are thousands of users.
+
+
+def _count(model, *where):
+    return select(func.count()).select_from(model).where(*where).scalar_subquery()
+
+
+async def list_all_users(db: AsyncSession) -> list[PlatformUserOut]:
+    workspace_count = _count(WorkspaceMember, WorkspaceMember.user_id == User.id)
+    result = await db.execute(select(User, workspace_count).order_by(User.created_at.desc()))
+    return [
+        PlatformUserOut(
+            id=u.id,
+            email=u.email,
+            full_name=u.full_name,
+            is_active=u.is_active,
+            is_superuser=u.is_superuser,
+            created_at=u.created_at,
+            workspace_count=count,
+        )
+        for u, count in result.all()
+    ]
+
+
+async def list_all_workspaces(db: AsyncSession) -> list[PlatformWorkspaceOut]:
+    storage = (
+        select(func.coalesce(func.sum(Document.file_size_bytes), 0))
+        .where(Document.workspace_id == Workspace.id)
+        .scalar_subquery()
+    )
+    messages = (
+        select(func.count())
+        .select_from(Message)
+        .join(ChatSession, ChatSession.id == Message.chat_session_id)
+        .where(ChatSession.workspace_id == Workspace.id)
+        .scalar_subquery()
+    )
+    result = await db.execute(
+        select(
+            Workspace,
+            User.email,
+            _count(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id),
+            _count(Document, Document.workspace_id == Workspace.id),
+            storage,
+            _count(ChatSession, ChatSession.workspace_id == Workspace.id),
+            messages,
+        )
+        .outerjoin(User, User.id == Workspace.owner_id)
+        .order_by(Workspace.created_at.desc())
+    )
+    return [
+        PlatformWorkspaceOut(
+            id=w.id,
+            name=w.name,
+            slug=w.slug,
+            owner_email=owner_email,
+            created_at=w.created_at,
+            member_count=members,
+            document_count=docs,
+            total_storage_bytes=size,
+            chat_session_count=sessions,
+            message_count=msgs,
+        )
+        for w, owner_email, members, docs, size, sessions, msgs in result.all()
+    ]
